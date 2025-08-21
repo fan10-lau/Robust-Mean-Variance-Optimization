@@ -3,7 +3,6 @@
 This project is a variation of the MIE377 course project at University of Toronto, which comes with a provided baseline MVO strategy.  
 I extend that baseline by incorporating **robust optimization** techniques.  
 
----
 
 ## Phase 1 - Robust MVO with Box Uncertainty
  
