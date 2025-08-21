@@ -1,7 +1,7 @@
 import numpy as np
 from services.estimators import *
 from services.optimization import *
-
+from services.uncertainty import *
 
 # this file will produce portfolios as outputs from data - the strategies can be implemented as classes or functions
 # if the strategies have parameters then it probably makes sense to define them as a class
@@ -66,4 +66,43 @@ class OLS_MVO:
         factRet = factorReturns.iloc[(-1) * self.NumObs:, :]
         mu, Q = OLS(returns, factRet)
         x = MVO(mu, Q)
+        return x
+
+
+class OLS_RobustBox:
+    """
+    Phase 1 strategy: Robust MVO with a Box uncertainty set.
+    """
+    def __init__(self,
+                 target_return: float,
+                 lookback: int = 60,
+                 z_or_conf: float = 1.96,       # 95% by default
+                 allow_short: bool = False,
+                 conf_is_level: bool = False):
+        """
+        z_or_conf: pass a z-score (1.96) or a confidence level (0.95 with conf_is_level=True)
+        """
+        if conf_is_level:
+            z = Z_FROM_CL.get(z_or_conf, 1.96)
+        else:
+            z = z_or_conf
+
+        self.R = target_return
+        self.NumObs = lookback
+        self.z = float(z)
+        self.allow_short = allow_short
+
+    def execute_strategy(self, periodReturns, factorReturns):
+        # estimation window
+        returns = periodReturns.iloc[-self.NumObs:, :]
+        factRet = factorReturns.iloc[-self.NumObs:, :]
+        mu, Q = OLS(returns, factRet)
+        T = returns.shape[0]
+
+        # Robust min-variance at target return using box penalty μ^T x − δ^T|x| ≥ R
+        x = robust_mvo_box(mu, Q,
+                           target_return=self.R,
+                           T=T,
+                           epsilon=self.z,
+                           allow_short=self.allow_short)
         return x
